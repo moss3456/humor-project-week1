@@ -1,20 +1,54 @@
-# Humor Database — Week 2
+# Humor Database — Week 3
 
-This Next.js app reads rows from a Supabase `jokes` table and renders them as a responsive card list.
+The Week 2 Supabase joke archive now includes Google authentication, cookie-based
+SSR sessions, automatic user profiles, avatar uploads, and a protected members
+route.
+
+## What changed
+
+- Google OAuth login with a PKCE callback at `/auth/callback`
+- `profiles` table linked one-to-one with `auth.users`
+- `auth.users` trigger that creates a profile for every new user
+- First-login profile completion prompt
+- Editable first name, last name, and avatar
+- Server-verified `/members` route
+- Supabase Storage avatars (the database stores URLs, never image binaries)
+- Next.js 16 `proxy.ts` session refresh using `@supabase/ssr`
 
 ## Supabase setup
 
-1. Create a Supabase project.
-2. Open **SQL Editor**, paste the contents of `supabase/schema.sql`, and run it. This creates the table, enables row-level security, adds a public read policy, and inserts sample rows.
-3. In **Project Settings → API**, copy the Project URL and anon/public key.
-4. Copy `.env.example` to `.env.local` and replace the example values:
+1. Open the existing Supabase project.
+2. In **SQL Editor**, run [`supabase/week3.sql`](supabase/week3.sql).
+   This migration creates the profile table, trigger, existing-user backfill,
+   and public `avatars` bucket. It intentionally does not change any RLS policy.
+3. In **Authentication → URL Configuration**, set the production Site URL and
+   add these redirect URLs:
 
-```bash
-SUPABASE_URL=https://your-project-id.supabase.co
-SUPABASE_ANON_KEY=your-anon-key
+   ```text
+   http://localhost:3000/auth/callback
+   https://<your-production-domain>/auth/callback
+   https://<your-commit-specific-domain>/auth/callback
+   ```
+
+4. In **Authentication → Providers → Google**, enable Google and add the OAuth
+   client credentials created in Google Cloud.
+
+Google's authorized redirect URI is the Supabase callback shown on the provider
+page (normally `https://<project-ref>.supabase.co/auth/v1/callback`). The app's
+post-authentication redirect remains exactly `/auth/callback`.
+
+## Environment variables
+
+Copy `.env.example` to `.env.local`:
+
+```text
+NEXT_PUBLIC_SUPABASE_URL=https://your-project-id.supabase.co
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=your-publishable-or-anon-key
+SUPABASE_SECRET_KEY=your-server-only-secret-key
 ```
 
-`.env.local` is ignored by Git and must never be committed.
+`SUPABASE_SECRET_KEY` is used only by the authenticated avatar upload Route
+Handler. Never prefix it with `NEXT_PUBLIC_` or commit it to Git.
 
 ## Run locally
 
@@ -25,6 +59,13 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000).
 
-## Deploy on Vercel
+## Verify
 
-Add `SUPABASE_URL` and `SUPABASE_ANON_KEY` in the Vercel project under **Settings → Environment Variables**, then redeploy the commit. To make the assignment accessible in Incognito Mode, disable Vercel Deployment Protection for the deployment and test its commit-specific URL in a private window.
+```bash
+npm run lint
+npm run build
+```
+
+Test Google sign-in, automatic profile creation, the first-login name prompt,
+profile edits, avatar upload, sign-out, and the `/members` route in an Incognito
+window before submitting the Vercel commit-specific URL.

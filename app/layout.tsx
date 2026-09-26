@@ -1,29 +1,23 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Navigation } from "@/app/components/navigation";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
-
 export const metadata: Metadata = {
-  title: "Humor Database",
-  description: "A collection of jokes loaded from Supabase.",
+  title: "Humor Department",
+  description: "A Supabase-powered joke archive with a members-only green room.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html
-      lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
-    >
-      <body className="min-h-full flex flex-col">{children}</body>
+    <html lang="en" className="h-full antialiased">
+      <body className="min-h-full flex flex-col">
+        <Navigation />
+        {children}
+        <footer className="site-footer">
+          <p>Humor Department · Powered by Next.js + Supabase</p>
+          <p>Laugh responsibly.</p>
+        </footer>
+      </body>
     </html>
   );
 }
