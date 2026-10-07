@@ -1,71 +1,89 @@
-# Humor Database — Week 3
+# Humor Department — Week 4
 
-The Week 2 Supabase joke archive now includes Google authentication, cookie-based
-SSR sessions, automatic user profiles, avatar uploads, and a protected members
-route.
+The original Supabase joke archive, Google login, profile editor, avatar upload,
+and protected members route now share the stage with an AI caption lab.
 
-## What changed
+## Week 4 features
 
-- Google OAuth login with a PKCE callback at `/auth/callback`
-- `profiles` table linked one-to-one with `auth.users`
-- `auth.users` trigger that creates a profile for every new user
-- First-login profile completion prompt
-- Editable first name, last name, and avatar
-- Server-verified `/members` route
-- Supabase Storage avatars (the database stores URLs, never image binaries)
-- Next.js 16 `proxy.ts` session refresh using `@supabase/ssr`
+- Public image-and-caption gallery at `/images`
+- Authenticated image uploads with type, size, ownership, and hourly limits
+- A real two-step prompt chain:
+  1. a vision-capable model turns the image into a factual visual brief
+  2. a second model call receives only that brief and creates four captions
+- Structured model output for deadpan, absurd, observational, and wildcard lines
+- Persistent upvotes and downvotes with one vote per user and caption
+- Optimistic vote UI with database-backed totals
+- RLS on every public application table
+- Owner-scoped Profile, upload, and vote policies
+- Owner-folder Storage upload policies for avatars and caption images
+- Server-side API keys only; no secret is exposed to the browser
+
+## Architecture
+
+The app uses Next.js App Router Server Components for database reads and small
+Client Components for uploads and voting. Every mutation Route Handler verifies
+the Supabase user again. The handlers use the user's session-scoped Supabase
+client, so Row Level Security remains the final authorization boundary.
+
+Image generation is stored as a small state machine:
+
+```text
+upload -> processing -> visual brief -> four captions -> ready
+                    \-> failed
+```
+
+Only `ready` images and their captions are visible in the public gallery.
 
 ## Supabase setup
 
-1. Open the existing Supabase project.
-2. In **SQL Editor**, run [`supabase/week3.sql`](supabase/week3.sql).
-   This migration creates the profile table, trigger, existing-user backfill,
-   and public `avatars` bucket. It intentionally does not change any RLS policy.
-3. In **Authentication → URL Configuration**, set the production Site URL and
-   add these redirect URLs:
+Run these SQL files in order if the earlier weeks have not already been applied:
 
-   ```text
-   http://localhost:3000/auth/callback
-   https://<your-production-domain>/auth/callback
-   https://<your-commit-specific-domain>/auth/callback
-   ```
+1. `supabase/schema.sql`
+2. `supabase/week3.sql`
+3. `supabase/week4.sql`
 
-4. In **Authentication → Providers → Google**, enable Google and add the OAuth
-   client credentials created in Google Cloud.
-
-Google's authorized redirect URI is the Supabase callback shown on the provider
-page (normally `https://<project-ref>.supabase.co/auth/v1/callback`). The app's
-post-authentication redirect remains exactly `/auth/callback`.
+`week4.sql` creates the new tables, vote-count trigger, `caption-images` bucket,
+and all required RLS and Storage policies. Review it before running it against a
+shared project.
 
 ## Environment variables
 
-Copy `.env.example` to `.env.local`:
+Copy `.env.example` to `.env.local` and fill in the values without committing
+the file:
 
 ```text
 NEXT_PUBLIC_SUPABASE_URL=https://your-project-id.supabase.co
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=your-publishable-or-anon-key
-SUPABASE_SECRET_KEY=your-server-only-secret-key
+OPENAI_API_KEY=your-server-only-openai-api-key
+OPENAI_CAPTION_MODEL=gpt-6-luna
 ```
 
-`SUPABASE_SECRET_KEY` is used only by the authenticated avatar upload Route
-Handler. Never prefix it with `NEXT_PUBLIC_` or commit it to Git.
+`OPENAI_API_KEY` must never use the `NEXT_PUBLIC_` prefix. The model variable is
+optional; the app defaults to `gpt-6-luna`.
 
-## Run locally
+## Authentication URLs
+
+Supabase Authentication must allow each origin that can complete Google OAuth:
+
+```text
+http://localhost:3000/auth/callback
+https://<branch-preview-domain>/auth/callback
+https://<commit-specific-domain>/auth/callback
+```
+
+Use exact deployment URLs instead of a broad wildcard.
+
+## Run and verify
 
 ```bash
 npm install
 npm run dev
-```
-
-Open [http://localhost:3000](http://localhost:3000).
-
-## Verify
-
-```bash
 npm run lint
+npx tsc --noEmit
 npm run build
 ```
 
-Test Google sign-in, automatic profile creation, the first-login name prompt,
-profile edits, avatar upload, sign-out, and the `/members` route in an Incognito
-window before submitting the Vercel commit-specific URL.
+Before submission, verify Google sign-in, Profile edits, avatar upload,
+`/members` protection, image upload, both model stages, caption persistence,
+vote persistence, cross-user RLS isolation, and Incognito access to the final
+commit-specific Vercel deployment.

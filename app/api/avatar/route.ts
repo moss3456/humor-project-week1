@@ -1,4 +1,3 @@
-import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
 const MAX_AVATAR_SIZE = 5 * 1024 * 1024;
@@ -38,10 +37,9 @@ export async function POST(request: Request) {
   }
 
   try {
-    const admin = createAdminClient();
     const extension = avatar.type.split("/")[1].replace("jpeg", "jpg");
     const path = `${user.id}/${crypto.randomUUID()}.${extension}`;
-    const { error: uploadError } = await admin.storage
+    const { error: uploadError } = await supabase.storage
       .from("avatars")
       .upload(path, await avatar.arrayBuffer(), {
         cacheControl: "31536000",
@@ -51,9 +49,9 @@ export async function POST(request: Request) {
 
     if (uploadError) throw uploadError;
 
-    const { data } = admin.storage.from("avatars").getPublicUrl(path);
+    const { data } = supabase.storage.from("avatars").getPublicUrl(path);
     const avatarUrl = data.publicUrl;
-    const { error: profileError } = await admin.from("profiles").upsert({
+    const { error: profileError } = await supabase.from("profiles").upsert({
       id: user.id,
       avatar_url: avatarUrl,
       updated_at: new Date().toISOString(),

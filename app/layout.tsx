@@ -4,7 +4,8 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Humor Department",
-  description: "A Supabase-powered joke archive with a members-only green room.",
+  description:
+    "An AI-powered comedy lab where people submit images and vote on generated captions.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
