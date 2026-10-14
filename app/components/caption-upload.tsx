@@ -10,6 +10,7 @@ export function CaptionUpload() {
   const [status, setStatus] = useState<"idle" | "working" | "done" | "error">(
     "idle",
   );
+  const [workingStep, setWorkingStep] = useState(0);
   const [message, setMessage] = useState<string | null>(null);
   const previewUrl = useMemo(
     () => (file ? URL.createObjectURL(file) : null),
@@ -26,6 +27,7 @@ export function CaptionUpload() {
     const nextFile = event.target.files?.[0] ?? null;
     setFile(nextFile);
     setStatus("idle");
+    setWorkingStep(0);
     setMessage(null);
   }
 
@@ -36,9 +38,20 @@ export function CaptionUpload() {
     }
 
     setStatus("working");
-    setMessage("The visual scout is describing the scene…");
+    setWorkingStep(0);
+    setMessage("Sending the image securely…");
     const body = new FormData();
     body.set("image", file);
+    const progressTimers = [
+      window.setTimeout(() => {
+        setWorkingStep(1);
+        setMessage("The visual scout is describing the scene…");
+      }, 1200),
+      window.setTimeout(() => {
+        setWorkingStep(2);
+        setMessage("Four comedy specialists are writing their lines…");
+      }, 6500),
+    ];
 
     try {
       const response = await fetch("/api/images", { method: "POST", body });
@@ -52,6 +65,7 @@ export function CaptionUpload() {
       }
 
       setStatus("done");
+      setWorkingStep(2);
       setMessage("Four fresh lines, straight from the writers' room.");
       setFile(null);
       if (inputRef.current) inputRef.current.value = "";
@@ -67,8 +81,12 @@ export function CaptionUpload() {
       setMessage(
         error instanceof Error ? error.message : "Could not generate captions.",
       );
+    } finally {
+      progressTimers.forEach((timer) => window.clearTimeout(timer));
     }
   }
+
+  const progressSteps = ["Upload", "Describe", "Write"];
 
   return (
     <section className="upload-stage" aria-labelledby="upload-title">
@@ -88,7 +106,10 @@ export function CaptionUpload() {
         </div>
       </div>
 
-      <div className={`upload-dropzone ${previewUrl ? "has-preview" : ""}`}>
+      <div
+        className={`upload-dropzone ${previewUrl ? "has-preview" : ""}`}
+        aria-busy={status === "working"}
+      >
         {previewUrl ? (
           // A local object URL does not need Next.js image optimization.
           // eslint-disable-next-line @next/next/no-img-element
@@ -125,10 +146,32 @@ export function CaptionUpload() {
           </button>
         </div>
         <p className="upload-limits">JPG, PNG or WebP · 4 MB max · 5 per hour</p>
+        <ol className="upload-progress" aria-label="Caption generation progress">
+          {progressSteps.map((step, index) => {
+            const isComplete =
+              status === "done" ||
+              (status === "working" && index < workingStep);
+            const isCurrent = status === "working" && index === workingStep;
+
+            return (
+              <li
+                aria-current={isCurrent ? "step" : undefined}
+                className={`${isComplete ? "complete" : ""} ${
+                  isCurrent ? "current" : ""
+                }`}
+                key={step}
+              >
+                <span aria-hidden="true">{isComplete ? "✓" : index + 1}</span>
+                {step}
+              </li>
+            );
+          })}
+        </ol>
         {message ? (
           <p
             className={`upload-message ${status === "error" ? "error" : ""}`}
-            role="status"
+            aria-live="polite"
+            role={status === "error" ? "alert" : "status"}
           >
             {status === "working" ? <span className="status-dot" /> : null}
             {message}

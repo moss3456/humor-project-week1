@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 type Props = {
@@ -18,11 +19,13 @@ export function VoteButtons({
   signedIn,
   upvotes: initialUpvotes,
 }: Props) {
+  const router = useRouter();
   const [vote, setVote] = useState(initialVote);
   const [upvotes, setUpvotes] = useState(initialUpvotes);
   const [downvotes, setDownvotes] = useState(initialDownvotes);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
 
   if (!signedIn) {
     return (
@@ -50,6 +53,7 @@ export function VoteButtons({
     setDownvotes(nextDownvotes);
     setPending(true);
     setError(null);
+    setNotice(null);
 
     try {
       const response = await fetch("/api/votes", {
@@ -61,6 +65,8 @@ export function VoteButtons({
       if (!response.ok) {
         throw new Error(result.error ?? "Could not save your vote.");
       }
+      setNotice(nextVote === 0 ? "Vote removed." : "Vote saved.");
+      router.refresh();
     } catch (requestError) {
       setVote(previous.vote);
       setUpvotes(previous.upvotes);
@@ -76,7 +82,7 @@ export function VoteButtons({
   }
 
   return (
-    <div className="vote-area">
+    <div className="vote-area" aria-busy={pending}>
       <div className="vote-buttons" aria-label="Rate this caption">
         <button
           aria-label={`Funny, ${upvotes} votes`}
@@ -86,7 +92,10 @@ export function VoteButtons({
           onClick={() => submitVote(1)}
           type="button"
         >
-          <span aria-hidden="true">↗</span>
+          <span className="vote-icon" aria-hidden="true">
+            ↗
+          </span>
+          <span className="vote-label">Funny</span>
           <b>{upvotes}</b>
         </button>
         <button
@@ -97,11 +106,22 @@ export function VoteButtons({
           onClick={() => submitVote(-1)}
           type="button"
         >
-          <span aria-hidden="true">↘</span>
+          <span className="vote-icon" aria-hidden="true">
+            ↘
+          </span>
+          <span className="vote-label">Not yet</span>
           <b>{downvotes}</b>
         </button>
       </div>
-      {error ? <span className="vote-error">{error}</span> : null}
+      {error ? (
+        <span className="vote-error" role="alert">
+          {error}
+        </span>
+      ) : notice ? (
+        <span className="vote-status" role="status">
+          {notice}
+        </span>
+      ) : null}
     </div>
   );
 }

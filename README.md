@@ -1,7 +1,18 @@
-# Humor Department — Week 4
+# Humor Department — Week 5
 
 The original Supabase joke archive, Google login, profile editor, avatar upload,
-and protected members route now share the stage with an AI caption lab.
+and protected members route now share the stage with an iterated AI caption lab.
+
+## Week 5 feedback iteration
+
+- Newest and crowd-picks running orders make the gallery useful on return visits
+- Live activity totals show images, competing lines, and ballots cast
+- A unique positive leader is marked as the crowd favorite for each image
+- Voting controls use visible labels, optimistic totals, and saved/removed status
+- Image generation now communicates upload, visual-description, and writing stages
+- Mobile navigation keeps the Caption Lab discoverable
+- Expected database failures render useful recovery states
+- Route-level loading and error UI avoid blank or generic failure screens
 
 ## Week 4 features
 
@@ -81,6 +92,7 @@ npm run dev
 npm run lint
 npx tsc --noEmit
 npm run build
+npm audit --omit=dev
 ```
 
 Before submission, verify Google sign-in, Profile edits, avatar upload,

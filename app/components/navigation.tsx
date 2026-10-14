@@ -32,8 +32,8 @@ export async function Navigation() {
         </Link>
 
         <div className="nav-links">
-          <Link href="/">Jokes</Link>
-          <Link href="/images">Caption Lab</Link>
+          <Link className="nav-jokes" href="/">Jokes</Link>
+          <Link className="nav-caption" href="/images">Caption Lab</Link>
           {user ? (
             <>
               <Link href="/members">Members</Link>

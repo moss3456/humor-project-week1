@@ -2,7 +2,10 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import type { Joke } from "@/lib/types";
 
-async function getJokes(): Promise<Joke[]> {
+async function getJokes(): Promise<{
+  jokes: Joke[];
+  unavailable: boolean;
+}> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("jokes")
@@ -10,14 +13,14 @@ async function getJokes(): Promise<Joke[]> {
     .order("id", { ascending: true });
 
   if (error) {
-    throw new Error(`Could not load jokes: ${error.message}`);
+    return { jokes: [], unavailable: true };
   }
 
-  return data ?? [];
+  return { jokes: data ?? [], unavailable: false };
 }
 
 export default async function Home() {
-  const jokes = await getJokes();
+  const { jokes, unavailable } = await getJokes();
   const supabase = await createClient();
   const {
     data: { user },
@@ -66,7 +69,18 @@ export default async function Home() {
           </span>
         </div>
 
-        {jokes.length > 0 ? (
+        {unavailable ? (
+          <div className="empty-state archive-error">
+            <strong>The archive missed its cue.</strong>
+            <span>
+              The joke list is temporarily unavailable, but the Caption Lab is
+              still open.
+            </span>
+            <Link className="button button-secondary" href="/images">
+              Visit the Caption Lab
+            </Link>
+          </div>
+        ) : jokes.length > 0 ? (
           <ul className="joke-grid">
             {jokes.map((joke, index) => (
               <li className="joke-card" key={joke.id}>
