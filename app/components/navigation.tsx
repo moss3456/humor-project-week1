@@ -32,7 +32,7 @@ export async function Navigation() {
         </Link>
 
         <div className="nav-links">
-          <Link className="nav-jokes" href="/">Jokes</Link>
+          <Link className="nav-jokes" href="/">Home</Link>
           <Link className="nav-caption" href="/images">Caption Lab</Link>
           {user ? (
             <>
