@@ -14,6 +14,20 @@ and protected members route now share the stage with an iterated AI caption lab.
 - Expected database failures render useful recovery states
 - Route-level loading and error UI avoid blank or generic failure screens
 
+## Week 7 observability
+
+The caption pipeline now records a top-level `generation_request` plus one
+`llm_response` for each of its two model stages. Records include the selected
+prompt chain, model and step identifiers, safe input summaries, output, latency,
+final status, and recoverable error details. Telemetry is best-effort and never
+blocks a successful user-facing generation.
+
+Run `supabase/week7.sql` after the Week 6 admin migration. The migration also
+adds the prompt-chain, term, model/provider, generation-example, allowed-domain,
+and whitelisted-email registries used by the separate Admin Panel. Signup rules
+are enforced only when at least one enabled domain or e-mail rule exists; an
+empty allowlist preserves the current open Google sign-in behavior.
+
 ## Week 4 features
 
 - Public image-and-caption gallery at `/images`

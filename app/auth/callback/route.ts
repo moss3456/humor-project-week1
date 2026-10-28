@@ -32,6 +32,15 @@ export async function GET(request: Request) {
     return redirectFromRequest(request, "/auth/auth-code-error");
   }
 
+  const { data: signupAllowed, error: signupRuleError } = await supabase.rpc(
+    "is_signup_allowed",
+    { candidate_email: user.email ?? "" },
+  );
+  if (!signupRuleError && signupAllowed === false) {
+    await supabase.auth.signOut();
+    return redirectFromRequest(request, "/login?error=signup-not-allowed");
+  }
+
   const { data: profile } = await supabase
     .from("profiles")
     .select("first_name, last_name")

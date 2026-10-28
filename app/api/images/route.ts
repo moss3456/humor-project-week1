@@ -4,6 +4,11 @@ import {
   getCaptionModel,
   isCaptionGenerationConfigured,
 } from "@/lib/ai/captions";
+import {
+  finishGenerationTelemetry,
+  recordLlmResponse,
+  startGenerationTelemetry,
+} from "@/lib/ai/observability";
 import { createClient } from "@/lib/supabase/server";
 
 export const maxDuration = 60;
@@ -119,9 +124,63 @@ export async function POST(request: Request) {
     );
   }
 
+  const generationStartedAt = Date.now();
+  const telemetry = await startGenerationTelemetry(supabase, {
+    userId: user.id,
+    imageId: imageRow.id,
+    modelKey: getCaptionModel(),
+    metadata: {
+      filename: image.name,
+      contentType: image.type,
+      sizeBytes: image.size,
+      promptVersion: "week7-v1",
+    },
+  });
+
   try {
-    const description = await describeImage(image);
-    const generatedCaptions = await generateCaptions(description);
+    const descriptionStartedAt = Date.now();
+    let description: string;
+    try {
+      description = await describeImage(image);
+      await recordLlmResponse(supabase, telemetry, {
+        step: "describe-image",
+        status: "succeeded",
+        inputSnapshot: { contentType: image.type, sizeBytes: image.size, detail: "low" },
+        outputText: description,
+        latencyMs: Date.now() - descriptionStartedAt,
+      });
+    } catch (error) {
+      await recordLlmResponse(supabase, telemetry, {
+        step: "describe-image",
+        status: "failed",
+        inputSnapshot: { contentType: image.type, sizeBytes: image.size, detail: "low" },
+        latencyMs: Date.now() - descriptionStartedAt,
+        error,
+      });
+      throw error;
+    }
+
+    const captionsStartedAt = Date.now();
+    let generatedCaptions: Awaited<ReturnType<typeof generateCaptions>>;
+    try {
+      generatedCaptions = await generateCaptions(description);
+      await recordLlmResponse(supabase, telemetry, {
+        step: "write-captions",
+        status: "succeeded",
+        inputSnapshot: { description },
+        outputJson: Object.fromEntries(generatedCaptions.map((caption) => [caption.tone, caption.text])),
+        latencyMs: Date.now() - captionsStartedAt,
+      });
+    } catch (error) {
+      await recordLlmResponse(supabase, telemetry, {
+        step: "write-captions",
+        status: "failed",
+        inputSnapshot: { description },
+        latencyMs: Date.now() - captionsStartedAt,
+        error,
+      });
+      throw error;
+    }
     const { error: captionError } = await supabase.from("captions").insert(
       generatedCaptions.map((caption, index) => ({
         image_id: imageRow.id,
@@ -129,7 +188,7 @@ export async function POST(request: Request) {
         tone: caption.tone,
         display_order: index + 1,
         model: getCaptionModel(),
-        prompt_version: "week4-v1",
+        prompt_version: "week7-v1",
       })),
     );
 
@@ -146,6 +205,10 @@ export async function POST(request: Request) {
       .eq("uploader_id", user.id);
 
     if (readyError) throw readyError;
+    await finishGenerationTelemetry(supabase, telemetry, {
+      status: "succeeded",
+      startedAt: generationStartedAt,
+    });
     return Response.json({ imageId: imageRow.id }, { status: 201 });
   } catch (error) {
     await supabase
@@ -156,6 +219,12 @@ export async function POST(request: Request) {
       })
       .eq("id", imageRow.id)
       .eq("uploader_id", user.id);
+
+    await finishGenerationTelemetry(supabase, telemetry, {
+      status: "failed",
+      startedAt: generationStartedAt,
+      error,
+    });
 
     return Response.json({ error: safeErrorMessage(error) }, { status: 502 });
   }

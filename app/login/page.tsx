@@ -3,7 +3,12 @@ import { redirect } from "next/navigation";
 import { GoogleSignIn } from "@/app/components/google-sign-in";
 import { createClient } from "@/lib/supabase/server";
 
-export default async function LoginPage() {
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ error?: string }>;
+}) {
+  const { error } = await searchParams;
   const supabase = await createClient();
   const {
     data: { user },
@@ -27,6 +32,11 @@ export default async function LoginPage() {
             ~ ~ ~
           </div>
           <GoogleSignIn />
+          {error === "signup-not-allowed" ? (
+            <p className="form-message error">
+              This e-mail address is not on the current signup allowlist. Contact an administrator.
+            </p>
+          ) : null}
           <p className="fine-print">
             We only request your basic identity details. No Google password is
             ever shared with this app.
